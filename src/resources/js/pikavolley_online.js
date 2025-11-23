@@ -7,6 +7,7 @@ import { askOneMoreGame } from './ui_online.js';
 import {
   displayPartialIPFor,
   displayNicknameFor,
+  displayPeerNicknameFor,
   displayMyAndPeerNicknameShownOrHidden,
 } from './nickname_display.js';
 import { replaySaver } from './replay/replay_saver.js';
@@ -101,7 +102,7 @@ export class PikachuVolleyballOnline extends PikachuVolleyball {
     if (this.selectedWithWho !== selectedWithWho) {
       this.amIPlayer2 = !this.amIPlayer2;
       displayNicknameFor(channel.myNickname, this.amIPlayer2);
-      displayNicknameFor(channel.peerNickname, !this.amIPlayer2);
+      displayPeerNicknameFor(channel.peerNickname, !this.amIPlayer2);
       displayPartialIPFor(channel.myPartialPublicIP, this.amIPlayer2);
       displayPartialIPFor(channel.peerPartialPublicIP, !this.amIPlayer2);
       displayMyAndPeerChatEnabledOrDisabled();

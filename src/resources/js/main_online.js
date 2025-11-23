@@ -56,6 +56,7 @@ import { ASSETS_PATH } from './offline_version_js/assets_path.js';
 import { channel } from './data_channel/data_channel.js';
 import { setUpUI, setUpUIAfterLoadingGameAssets } from './ui_online.js';
 import { setUpUIForBlockingOtherUsers } from './block_other_players/ui.js';
+import { setUpUIForManagingBadWords } from './bad_words_filtering/ui.js';
 import { setGetSpeechBubbleNeeded } from './chat_display.js';
 import '../style.css';
 
@@ -109,6 +110,7 @@ channel.callbackAfterDataChannelOpened = () => {
 
 setUpUI();
 setUpUIForBlockingOtherUsers();
+setUpUIForManagingBadWords();
 
 /**
  * Set up the loader progress bar.
