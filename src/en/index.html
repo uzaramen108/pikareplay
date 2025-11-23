@@ -199,6 +199,18 @@
               is recommended to turn it off.)</label
             >
           </div>
+          <div class="margin-top-a-little">
+            <input
+              id="basic-chat-filter-checkbox"
+              type="checkbox"
+              checked="checked"
+            />
+            <label for="basic-chat-filter-checkbox"
+              >Use the default profanity filter (pre-defined banned words will
+              be masked in chat with a peer. Additional banned words can be
+              added under the Quick Match block list.)</label
+            >
+          </div>
         </div>
         <div>
           <p class="margin-top">
@@ -324,6 +336,53 @@
             <tfoot>
               <tr>
                 <td colspan="3">
+                  <button type="button" class="delete-btn">
+                    Delete from the list
+                  </button>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </details>
+      </div>
+      <div id="blocked-bad-words-table-container" class="margin-top">
+        <details>
+          <summary>
+            List of additional Banned words (<span
+              id="number-of-bad-words-addresses"
+              >0</span
+            >/50)
+          </summary>
+          <table class="blocked-bad-words-table">
+            <thead>
+              <tr>
+                <th>Banned word content</th>
+                <th>Creation date</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr>
+                <td>
+                  <input
+                    type="text"
+                    id="new-custom-word-input"
+                    placeholder="Banned words to add"
+                    style="width: 95%"
+                  />
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    id="add-custom-word-btn"
+                    style="width: 100%"
+                  >
+                    Registration
+                  </button>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2">
                   <button type="button" class="delete-btn">
                     Delete from the list
                   </button>

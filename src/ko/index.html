@@ -197,6 +197,18 @@
               끄기를 권장합니다.)</label
             >
           </div>
+          <div class="margin-top-a-little">
+            <input
+              id="basic-chat-filter-checkbox"
+              type="checkbox"
+              checked="checked"
+            />
+            <label for="basic-chat-filter-checkbox"
+              >기본 욕설 필터 사용 (상대방과의 채팅에서 미리 지정된 금지어에
+              대해 필터링합니다. 추가적인 금지어 작성은 퀵 매치 차단 목록
+              아래에서 작성 가능합니다.)</label
+            >
+          </div>
         </div>
         <div>
           <p class="margin-top">
@@ -317,6 +329,51 @@
             <tfoot>
               <tr>
                 <td colspan="3">
+                  <button type="button" class="delete-btn">
+                    목록에서 삭제
+                  </button>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </details>
+      </div>
+      <div id="blocked-bad-words-table-container" class="margin-top">
+        <details>
+          <summary>
+            추가 금지어 목록 (<span id="number-of-bad-words-addresses">0</span
+            >/50)
+          </summary>
+          <table class="blocked-bad-words-table">
+            <thead>
+              <tr>
+                <th>금지어 내용</th>
+                <th>작성 날짜</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr>
+                <td>
+                  <input
+                    type="text"
+                    id="new-custom-word-input"
+                    placeholder="추가할 금지어"
+                    style="width: 100%"
+                  />
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    id="add-custom-word-btn"
+                    style="width: 100%"
+                  >
+                    등록
+                  </button>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2">
                   <button type="button" class="delete-btn">
                     목록에서 삭제
                   </button>

@@ -29,6 +29,7 @@ import '../style.css';
 import { MATCH_GROUP } from './quick_match/match_group.js';
 import {
   displayNicknameFor,
+  displayPeerNicknameFor,
   displayMyAndPeerNicknameShownOrHidden,
 } from './nickname_display.js';
 
@@ -650,6 +651,9 @@ export function setUpUI() {
     const blockedIPAddressesTableContainer = document.getElementById(
       'blocked-ip-addresses-table-container'
     );
+    const blockedBadWordsTableContainer = document.getElementById(
+      'blocked-bad-words-table-container'
+    );
     const openChatListContainer = document.getElementById(
       'open-chat-list-container'
     );
@@ -659,6 +663,7 @@ export function setUpUI() {
       quickMatchBtn.disabled = true;
       window.addEventListener('keydown', clickJoinBtnByPressingEnter);
       blockedIPAddressesTableContainer.classList.add('hidden');
+      blockedBadWordsTableContainer.classList.add('hidden');
       if (openChatListContainer) {
         openChatListContainer.classList.add('hidden');
       }
@@ -668,6 +673,7 @@ export function setUpUI() {
       quickMatchBtn.disabled = false;
       window.removeEventListener('keydown', clickJoinBtnByPressingEnter);
       blockedIPAddressesTableContainer.classList.remove('hidden');
+      blockedBadWordsTableContainer.classList.remove('hidden');
       if (openChatListContainer) {
         openChatListContainer.classList.remove('hidden');
       }
@@ -731,9 +737,9 @@ export function setUpUI() {
     }
     nicknameHideBtn.blur();
     if (channel.amIPlayer2 === null) {
-      displayNicknameFor(channel.peerNickname, channel.amICreatedRoom);
+      displayPeerNicknameFor(channel.peerNickname, channel.amICreatedRoom);
     } else {
-      displayNicknameFor(channel.peerNickname, !channel.amIPlayer2);
+      displayPeerNicknameFor(channel.peerNickname, !channel.amIPlayer2);
     }
     if (channel.amICreatedRoom) {
       replaySaver.recordNicknames(channel.myNickname, channel.peerNickname);

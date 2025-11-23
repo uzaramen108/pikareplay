@@ -51,6 +51,7 @@ import {
 import {
   displayMyAndPeerNicknameShownOrHidden,
   displayNicknameFor,
+  displayPeerNicknameFor,
   displayPartialIPFor,
 } from '../nickname_display.js';
 import {
@@ -480,7 +481,7 @@ function receiveChatMessageFromPeer(chatMessage) {
         .slice(0, -1)
         .trim()
         .slice(0, MAX_NICKNAME_LENGTH);
-      displayNicknameFor(channel.peerNickname, channel.amICreatedRoom);
+      displayPeerNicknameFor(channel.peerNickname, channel.amICreatedRoom);
       displayNicknameFor(channel.myNickname, !channel.amICreatedRoom);
       displayPartialIPFor(channel.peerPartialPublicIP, channel.amICreatedRoom);
       displayPartialIPFor(channel.myPartialPublicIP, !channel.amICreatedRoom);
