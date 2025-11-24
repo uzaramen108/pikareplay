@@ -53,15 +53,8 @@ export function setUpUIForBlockingOtherUsers() {
   displayBlockedIPs(blockedIPList.createArrayView());
   displayNumberOfBlockedIPAddresses();
 
+  let lastSelectedIndex = -1;
   document.body.addEventListener('click', (event) => {
-    Array.from(
-      // @ts-ignore
-      blockedIPAddressesTableTbody.getElementsByTagName('tr')
-    ).forEach((elem) => {
-      elem.classList.remove('selected');
-    });
-    // @ts-ignore
-    deleteBtn.disabled = true;
     const target = event.target;
     if (
       // @ts-ignore
@@ -69,18 +62,47 @@ export function setUpUIForBlockingOtherUsers() {
       // @ts-ignore
       target.tagName === 'TD'
     ) {
-      // select TR element which is parent element of TD element
       // @ts-ignore
-      target.parentElement.classList.add('selected');
-      // @ts-ignore
-      deleteBtn.disabled = false;
+      const trElement = target.parentElement;
+      const currentIndex = trElement.sectionRowIndex;
+
+      if (event.shiftKey && lastSelectedIndex !== -1) {
+        if (!event.ctrlKey) {
+          clearSelection();
+        }
+        const start = Math.min(lastSelectedIndex, currentIndex);
+        const end = Math.max(lastSelectedIndex, currentIndex);
+        const rows = blockedIPAddressesTableTbody.getElementsByTagName('tr');
+        for (let i = start; i <= end; i++) {
+          if (rows[i]) {
+            rows[i].classList.add('selected');
+          }
+        }
+      } else {
+        if (!event.ctrlKey) {
+          clearSelection();
+        }
+        trElement.classList.toggle('selected');
+        lastSelectedIndex = currentIndex;
+      }
+    } else {
+      if (!event.ctrlKey && !event.shiftKey) {
+        clearSelection();
+      }
     }
+
+    // @ts-ignore
+    deleteBtn.disabled =
+      !blockedIPAddressesTableTbody.querySelector('.selected');
   });
   deleteBtn.addEventListener('click', () => {
-    const selectedTRElement =
-      blockedIPAddressesTableTbody.querySelector('.selected');
-    // @ts-ignore
-    blockedIPList.removeAt(Number(selectedTRElement.dataset.index));
+    lastSelectedIndex = -1;
+    const selectedTRElements =
+      blockedIPAddressesTableTbody.querySelectorAll('.selected');
+    for (let i = selectedTRElements.length - 1; i >= 0; --i) {
+      // @ts-ignore
+      blockedIPList.removeAt(Number(selectedTRElements[i].dataset.index));
+    }
     try {
       window.localStorage.setItem(
         'stringifiedBlockedIPListArrayView',
@@ -212,4 +234,16 @@ function displayBlockedIPs(blockedIPs) {
 function displayNumberOfBlockedIPAddresses() {
   document.getElementById('number-of-blocked-ip-addresses').textContent =
     String(blockedIPList.length);
+}
+
+/**
+ * Clear all selected rows in the blocked IP table
+ */
+function clearSelection() {
+  Array.from(
+    // @ts-ignore
+    blockedIPAddressesTableTbody.getElementsByTagName('tr')
+  ).forEach((elem) => {
+    elem.classList.remove('selected');
+  });
 }
