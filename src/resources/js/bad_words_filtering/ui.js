@@ -102,15 +102,8 @@ function setUpCustomFilterManagement() {
   displayCustomBadWords(badWordList.createArrayView());
   displayNumberOfCustomBadWords();
 
+  let lastSelectedIndex = -1;
   document.body.addEventListener('click', (event) => {
-    Array.from(
-      // @ts-ignore
-      customBadWordsTableTbody.getElementsByTagName('tr')
-    ).forEach((elem) => {
-      elem.classList.remove('selected');
-    });
-    // @ts-ignore
-    deleteCustomWordBtn.disabled = true;
     const target = event.target;
     if (
       // @ts-ignore
@@ -119,16 +112,46 @@ function setUpCustomFilterManagement() {
       target.tagName === 'TD'
     ) {
       // @ts-ignore
-      target.parentElement.classList.add('selected');
-      // @ts-ignore
-      deleteCustomWordBtn.disabled = false;
+      const trElement = target.parentElement;
+      const currentIndex = trElement.sectionRowIndex;
+
+      if (event.shiftKey && lastSelectedIndex !== -1) {
+        if (!event.ctrlKey) {
+          clearSelection();
+        }
+        const start = Math.min(lastSelectedIndex, currentIndex);
+        const end = Math.max(lastSelectedIndex, currentIndex);
+        const rows = customBadWordsTableTbody.getElementsByTagName('tr');
+        for (let i = start; i <= end; i++) {
+          if (rows[i]) {
+            rows[i].classList.add('selected');
+          }
+        }
+      } else {
+        if (!event.ctrlKey) {
+          clearSelection();
+        }
+        trElement.classList.toggle('selected');
+        lastSelectedIndex = currentIndex;
+      }
+    } else {
+      if (!event.ctrlKey && !event.shiftKey) {
+        clearSelection();
+      }
     }
+
+    // @ts-ignore
+    deleteCustomWordBtn.disabled =
+      !customBadWordsTableTbody.querySelector('.selected');
   });
   deleteCustomWordBtn.addEventListener('click', () => {
-    const selectedTRElement =
-      customBadWordsTableTbody.querySelector('.selected');
-    // @ts-ignore
-    badWordList.removeAt(Number(selectedTRElement.dataset.index));
+    lastSelectedIndex = -1;
+    const selectedTRElements =
+      customBadWordsTableTbody.querySelectorAll('.selected');
+    for (let i = selectedTRElements.length - 1; i >= 0; --i) {
+      // @ts-ignore
+      badWordList.removeAt(Number(selectedTRElements[i].dataset.index));
+    }
     try {
       window.localStorage.setItem(
         'stringifiedbadWordListArrayView',
@@ -141,6 +164,7 @@ function setUpCustomFilterManagement() {
     displayNumberOfCustomBadWords();
   });
   addCustomWordBtn.addEventListener('click', () => {
+    lastSelectedIndex = -1;
     // @ts-ignore
     const cleanWord = newCustomWordInput.value
       .toLowerCase()
@@ -191,4 +215,16 @@ function displayCustomBadWords(badWords) {
  */
 function displayNumberOfCustomBadWords() {
   customBadWordsCountSpan.textContent = String(badWordList.length);
+}
+
+/**
+ * Clear all selected rows in the bad words table
+ */
+function clearSelection() {
+  Array.from(
+    // @ts-ignore
+    customBadWordsTableTbody.getElementsByTagName('tr')
+  ).forEach((elem) => {
+    elem.classList.remove('selected');
+  });
 }
