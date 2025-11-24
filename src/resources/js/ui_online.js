@@ -1044,9 +1044,13 @@ function getJoinRoomID() {
   );
 }
 
-export function disableCancelQuickMatchBtn() {
+export function disableCancelQuickMatchBtnForAWhile() {
   // @ts-ignore
   document.getElementById('cancel-quick-match-btn-2').disabled = true;
+  window.setTimeout(() => {
+    // @ts-ignore
+    document.getElementById('cancel-quick-match-btn-2').disabled = false;
+  }, 10000);
 }
 
 /**

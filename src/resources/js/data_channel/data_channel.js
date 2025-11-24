@@ -40,7 +40,7 @@ import {
   printNoRoomMatchingMessageInQuickMatch,
   printSomeoneElseAlreadyJoinedRoomMessage,
   printConnectionFailed,
-  disableCancelQuickMatchBtn,
+  disableCancelQuickMatchBtnForAWhile,
   askOptionsChangeReceivedFromPeer,
   noticeAgreeMessageFromPeer,
   notifyBySound,
@@ -903,7 +903,7 @@ function dataChannelOpened() {
   cleanUpFirestoreRelevants();
 
   if (channel.isQuickMatch) {
-    disableCancelQuickMatchBtn();
+    disableCancelQuickMatchBtnForAWhile();
   }
 
   if (channel.amICreatedRoom) {
