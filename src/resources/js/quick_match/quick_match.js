@@ -14,6 +14,7 @@ import {
   printQuickMatchLog,
   printFailedToConnectToQuickMatchServer,
   printNumberOfSuccessfulQuickMatches,
+  disableCancelQuickMatchBtnForAWhile,
 } from '../ui_online.js';
 
 let roomIdToCreate = null;
@@ -162,6 +163,7 @@ const callback = (data) => {
       break;
     case MESSAGE_TO_CLIENT.waitPeerConnection:
       console.log('Wait peer connection!');
+      disableCancelQuickMatchBtnForAWhile();
       // If the following line is executed after data channel is opened,
       // peer hashed ip can be staged too late to enable blocking this peer button,
       // which checked if peer hashed ip is staged already.
@@ -171,15 +173,18 @@ const callback = (data) => {
       break;
     case MESSAGE_TO_CLIENT.connectToPeerAfterAWhile:
       console.log('Connect To Peer after 3 seconds...');
+      disableCancelQuickMatchBtnForAWhile();
       window.setTimeout(() => {
         console.log('Connect To Peer!');
-        printQuickMatchState(MESSAGE_TO_CLIENT.connectToPeer);
+        disableCancelQuickMatchBtnForAWhile();
         blockedIPList.stagePeerHashedIP(data.hashedPeerIP);
         joinRoom(data.roomId);
+        printQuickMatchState(MESSAGE_TO_CLIENT.connectToPeer);
       }, 3000);
       break;
     case MESSAGE_TO_CLIENT.connectToPeer:
       console.log('Connect To Peer!');
+      disableCancelQuickMatchBtnForAWhile();
       blockedIPList.stagePeerHashedIP(data.hashedPeerIP);
       joinRoom(data.roomId);
       break;

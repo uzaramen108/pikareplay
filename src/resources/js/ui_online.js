@@ -28,7 +28,6 @@ import { showBlockThisPeerBtn } from './block_other_players/ui.js';
 import '../style.css';
 import { MATCH_GROUP } from './quick_match/match_group.js';
 import {
-  displayNicknameFor,
   displayPeerNicknameFor,
   displayMyAndPeerNicknameShownOrHidden,
 } from './nickname_display.js';
@@ -82,6 +81,7 @@ let pikaVolleyOnline = null; // it is set after loading the game assets
 let willSaveReplayAutomatically = null;
 let willNotifyBySound = null;
 let alreadySaved = false;
+let remaningSecondsIntervalId = null;
 
 const chatOpenBtnAndChatDisablingBtnContainer = document.getElementById(
   'chat-open-btn-and-chat-disabling-btn-container'
@@ -94,6 +94,10 @@ const chatInputAndSendBtnContainer = document.getElementById(
 );
 const chatInput = document.getElementById('chat-input');
 const sendBtn = document.getElementById('send-btn');
+const cancelQuickMatchBtn2 = document.getElementById(
+  'cancel-quick-match-btn-2'
+);
+const originalHtmlCancelQuickMatchBtn2 = cancelQuickMatchBtn2.innerHTML;
 
 export function setUpUI() {
   // game keyboard input needs to be unsubscribe for typing join room ID
@@ -833,9 +837,6 @@ export function setUpUI() {
     location.reload();
   });
 
-  const cancelQuickMatchBtn2 = document.getElementById(
-    'cancel-quick-match-btn-2'
-  );
   cancelQuickMatchBtn2.addEventListener('click', () => {
     sendCancelQuickMatchMessageToServer();
     cleanUpFirestoreRelevants();
@@ -1045,12 +1046,22 @@ function getJoinRoomID() {
 }
 
 export function disableCancelQuickMatchBtnForAWhile() {
+  let remainingSeconds = 10;
   // @ts-ignore
-  document.getElementById('cancel-quick-match-btn-2').disabled = true;
-  window.setTimeout(() => {
-    // @ts-ignore
-    document.getElementById('cancel-quick-match-btn-2').disabled = false;
-  }, 10000);
+  cancelQuickMatchBtn2.disabled = true;
+  cancelQuickMatchBtn2.textContent = String(remainingSeconds);
+  clearInterval(remaningSecondsIntervalId);
+  remaningSecondsIntervalId = window.setInterval(() => {
+    remainingSeconds--;
+    cancelQuickMatchBtn2.textContent = String(remainingSeconds);
+    if (remainingSeconds === 0) {
+      clearInterval(remaningSecondsIntervalId);
+      remaningSecondsIntervalId = null;
+      // @ts-ignore
+      cancelQuickMatchBtn2.disabled = false;
+      cancelQuickMatchBtn2.innerHTML = originalHtmlCancelQuickMatchBtn2;
+    }
+  }, 1000);
 }
 
 /**
