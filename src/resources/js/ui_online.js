@@ -97,7 +97,9 @@ const sendBtn = document.getElementById('send-btn');
 const cancelQuickMatchBtn2 = document.getElementById(
   'cancel-quick-match-btn-2'
 );
-const originalHtmlCancelQuickMatchBtn2 = cancelQuickMatchBtn2.innerHTML;
+const originalHtmlCancelQuickMatchBtn2 = cancelQuickMatchBtn2
+  ? cancelQuickMatchBtn2.innerHTML
+  : null;
 
 export function setUpUI() {
   // game keyboard input needs to be unsubscribe for typing join room ID
