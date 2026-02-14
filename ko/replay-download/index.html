@@ -1,6 +1,62 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>Pikachu Volleyball Replay to Video</title><style>/* 캔버스 크기 고정 (432x304) */
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>Pikachu Volleyball Replay to Video</title><style>/* 전체 페이지 스타일: 중앙 정렬 및 다크 모드 */
+        body {
+            background-color: #202020; /* 배경색: 어두운 회색 */
+            color: white;              /* 글자색: 흰색 */
+            font-family: sans-serif;   /* 폰트 깔끔하게 */
+            
+            /* 중앙 정렬의 핵심 Flexbox 설정 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;       /* 가로 중앙 정렬 */
+            justify-content: center;   /* 세로 중앙 정렬 */
+            min-height: 100vh;         /* 화면 전체 높이 사용 */
+            margin: 0;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+        }
+
+        /* 입력창과 버튼을 감싸는 영역 */
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;             /* 요소 사이 간격 */
+            align-items: center;
+        }
+
+        /* 버튼 디자인 */
+        button {
+            padding: 8px 16px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50; /* 초록색 포인트 */
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #status {
+            margin-bottom: 20px;
+            color: #ccc;
+        }
+
+        /* 캔버스 크기 고정 및 테두리 */
+        #game-canvas-container {
+            /* 캔버스가 없어도 영역이 보이도록 테두리 추가 (선택사항) */
+            border: 2px dashed #555; 
+            min-width: 432px;
+            min-height: 304px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         #game-canvas-container canvas {
             width: 432px !important;
             height: 304px !important;
-            border: 1px solid #ccc;
-        }</style><script defer="defer" src="../../runtime.1a3c387936a596b5bafa.js"></script><script defer="defer" src="../../ko.c88ad933754ea3dd3609.js"></script><script defer="defer" src="../../244.9e395e8539fe98ed7b14.js"></script><script defer="defer" src="../../476.bbc2d2ca36abec99693c.js"></script><script defer="defer" src="../../main_out.eb7bff71b0df5112eee5.js"></script><script defer="defer" src="../../dark_color_scheme.86e03a713a5523a91fb5.js"></script><link href="../../415.42110e153a6ec48cd0df.css" rel="stylesheet"></head><body><h1>리플레이 비디오 변환기</h1><input type="file" id="replay-upload" accept=".txt"><div id="status">파일을 선택하면 녹화가 시작됩니다...</div><button id="record-btn" style="display:none;">녹화 시작 / 다운로드</button><div id="game-canvas-container"></div></body></html>
+            border: 1px solid #fff; /* 캔버스 테두리 */
+        }</style><script defer="defer" src="../../runtime.1a3c387936a596b5bafa.js"></script><script defer="defer" src="../../ko.c88ad933754ea3dd3609.js"></script><script defer="defer" src="../../244.9e395e8539fe98ed7b14.js"></script><script defer="defer" src="../../476.bbc2d2ca36abec99693c.js"></script><script defer="defer" src="../../main_out.eb7bff71b0df5112eee5.js"></script><script defer="defer" src="../../dark_color_scheme.86e03a713a5523a91fb5.js"></script><link href="../../415.42110e153a6ec48cd0df.css" rel="stylesheet"></head><body><h1>리플레이 비디오 변환기</h1><div class="controls"><input type="file" id="replay-upload" accept=".txt"> <button id="record-btn">녹화 시작</button></div><div id="status">파일을 선택하면 준비됩니다...</div><div id="game-canvas-container"></div></body></html>
