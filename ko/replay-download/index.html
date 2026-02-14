@@ -89,6 +89,7 @@
             justify-content: center;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
             padding: 10px;
+            position: relative;
         }
         
         #game-canvas-container canvas {
@@ -98,6 +99,43 @@
             image-rendering: pixelated;
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
+        }
+        
+        /* Make nickname, IP, and chat visible */
+        #player1-nickname, #player2-nickname,
+        #player1-partial-ip, #player2-partial-ip {
+            position: absolute;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+        
+        #player1-nickname { top: 10px; left: 10px; }
+        #player2-nickname { top: 10px; right: 10px; }
+        #player1-partial-ip { top: 30px; left: 10px; font-size: 12px; }
+        #player2-partial-ip { top: 30px; right: 10px; font-size: 12px; }
+        
+        #chat-board {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .speech-bubble {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            margin-bottom: 5px;
+            display: inline-block;
+            max-width: 200px;
+            word-wrap: break-word;
         }
         
         .info-box {
@@ -134,29 +172,29 @@
             font-weight: bold;
         }
         
-        /* Loading animation */
-        .loading-indicator {
+        /* Loading box - visible during processing */
+        #loading-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px 60px;
+            border-radius: 12px;
+            z-index: 1000;
+        }
+        
+        #loading-box.hidden {
             display: none;
-            margin: 20px auto;
         }
         
-        .loading-indicator.active {
-            display: block;
-        }
-        
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        #progress-bar {
+            width: 0%;
+            height: 30px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            transition: width 0.3s ease;
+            min-width: 400px;
         }
         
         /* Dummy container - hidden but necessary for dependencies */
@@ -165,4 +203,4 @@
             visibility: hidden !important;
             position: absolute !important;
             left: -9999px !important;
-        }</style><script defer="defer" src="../../runtime.1a3c387936a596b5bafa.js"></script><script defer="defer" src="../../ko.c88ad933754ea3dd3609.js"></script><script defer="defer" src="../../244.9e395e8539fe98ed7b14.js"></script><script defer="defer" src="../../476.5e9f3dd37b003d455bb1.js"></script><script defer="defer" src="../../main_out.393408d79c67b61bba8b.js"></script><script defer="defer" src="../../dark_color_scheme.86e03a713a5523a91fb5.js"></script><link href="../../415.42110e153a6ec48cd0df.css" rel="stylesheet"></head><body><h1>⚡ 피카츄 배구 리플레이 변환기 ⚡</h1><p class="subtitle">리플레이 파일(.txt)을 동영상(.webm)으로 변환하세요</p><div class="controls"><button id="record-btn">📁 리플레이 파일 선택 & 변환 시작</button></div><div id="status">리플레이 파일을 선택하면 자동으로 변환이 시작됩니다...</div><div class="loading-indicator" id="loading-indicator"><div class="spinner"></div></div><div id="game-canvas-container"><div style="text-align: center; color: rgba(255,255,255,0.5);"><p style="font-size: 48px; margin-bottom: 10px;">⚡</p><p>리플레이가 여기에 표시됩니다</p></div></div><div class="info-box"><h2>📋 사용 방법</h2><ul><li>위 버튼을 클릭하여 리플레이 .txt 파일을 선택하세요</li><li>자동으로 게임이 재생되며 녹화됩니다</li><li>녹화가 완료되면 .webm 동영상 파일이 다운로드됩니다</li><li>동영상 해상도: 432×304 픽셀 (원본 화질)</li><li>프레임레이트: 25 FPS</li></ul></div><div id="dummy-container"><div id="loading-box" class="hidden"><div id="progress-bar"></div></div><input id="scrubber-range-input" type="range"> <button id="play-pause-btn"></button> <button id="seek-backward-1"></button> <button id="seek-forward-1"></button> <button id="seek-backward-3"></button> <button id="seek-forward-3"></button> <button id="speed-btn-5-fps"></button> <button id="speed-btn-half-times"></button> <button id="speed-btn-1-times"></button> <button id="speed-btn-2-times"></button> <input id="file-input" type="file"><div id="dropbox"></div><input id="fps-input"> <button id="notice-end-of-replay-ok-btn"></button> <button id="notice-file-open-error-ok-btn"></button><div id="keyboard-container"><div id="z-key"></div><div id="r-key"></div><div id="v-key"></div><div id="d-key"></div><div id="g-key"></div><div id="enter-key"></div><div id="up-key"></div><div id="down-key"></div><div id="left-key"></div><div id="right-key"></div></div><input id="show-keyboard-checkbox" type="checkbox"> <input id="show-chat-checkbox" type="checkbox"> <input id="show-nicknames-checkbox" type="checkbox"> <input id="show-ip-addresses-checkbox" type="checkbox"> <input id="turn-on-bgm-checkbox" type="checkbox"> <input id="turn-on-sfx-checkbox" type="checkbox"> <input id="graphic-sharp-checkbox" type="checkbox"><div id="player1-nickname"></div><div id="player2-nickname"></div><div id="player1-partial-ip"></div><div id="player2-partial-ip"></div><span id="pause-mark">||</span> <span id="play-mark">▶</span><div id="notice-end-of-replay"></div><div id="notice-file-open-error"></div><div id="replay-viewer-at"></div><div id="time-current"></div><div id="time-duration"></div><div id="chat-board"></div></div></body></html>
+        }</style><script defer="defer" src="../../runtime.1a3c387936a596b5bafa.js"></script><script defer="defer" src="../../ko.c88ad933754ea3dd3609.js"></script><script defer="defer" src="../../244.9e395e8539fe98ed7b14.js"></script><script defer="defer" src="../../476.5e9f3dd37b003d455bb1.js"></script><script defer="defer" src="../../main_out.312d03612d93c7cb2ff5.js"></script><script defer="defer" src="../../dark_color_scheme.86e03a713a5523a91fb5.js"></script><link href="../../415.42110e153a6ec48cd0df.css" rel="stylesheet"></head><body><h1>⚡ 피카츄 배구 리플레이 변환기 ⚡</h1><p class="subtitle">리플레이 파일(.txt)을 동영상(.webm)으로 변환하세요</p><div class="controls"><button id="record-btn">📁 리플레이 파일 선택 & 변환 시작</button></div><div id="status">리플레이 파일을 선택하면 자동으로 변환이 시작됩니다...</div><div id="loading-box" class="hidden"></div><div id="game-canvas-container"><div style="text-align: center; color: rgba(255,255,255,0.5);"><p style="font-size: 48px; margin-bottom: 10px;">⚡</p><p>변환 중에는 진행률만 표시됩니다</p></div><div id="player1-nickname" class="hidden"></div><div id="player2-nickname" class="hidden"></div><div id="player1-partial-ip" class="hidden"></div><div id="player2-partial-ip" class="hidden"></div><div id="chat-board"></div></div><div class="info-box"><h2>📋 사용 방법</h2><ul><li>위 버튼을 클릭하여 리플레이 .txt 파일을 선택하세요</li><li>자동으로 녹화가 시작됩니다 (실시간 속도)</li><li>완료되면 .webm 동영상 파일이 자동으로 다운로드됩니다</li><li>동영상 해상도: 432×304 픽셀 (원본 화질)</li><li>재생 프레임레이트: 30 FPS</li><li>닉네임, IP, 채팅이 동영상에 포함됩니다</li><li>BGM 꺼짐, 효과음만 포함 (브라우저 제한으로 효과음 미지원 가능)</li></ul></div><div id="dummy-container"><div id="progress-bar"></div><input id="scrubber-range-input" type="range"> <button id="play-pause-btn"></button> <button id="seek-backward-1"></button> <button id="seek-forward-1"></button> <button id="seek-backward-3"></button> <button id="seek-forward-3"></button> <button id="speed-btn-5-fps"></button> <button id="speed-btn-half-times"></button> <button id="speed-btn-1-times"></button> <button id="speed-btn-2-times"></button> <input id="file-input" type="file"><div id="dropbox"></div><input id="fps-input"> <button id="notice-end-of-replay-ok-btn"></button> <button id="notice-file-open-error-ok-btn"></button><div id="keyboard-container"><div id="z-key"></div><div id="r-key"></div><div id="v-key"></div><div id="d-key"></div><div id="g-key"></div><div id="enter-key"></div><div id="up-key"></div><div id="down-key"></div><div id="left-key"></div><div id="right-key"></div></div><input id="show-keyboard-checkbox" type="checkbox"> <input id="show-chat-checkbox" type="checkbox"> <input id="show-nicknames-checkbox" type="checkbox"> <input id="show-ip-addresses-checkbox" type="checkbox"> <input id="turn-on-bgm-checkbox" type="checkbox"> <input id="turn-on-sfx-checkbox" type="checkbox"> <input id="graphic-sharp-checkbox" type="checkbox"> <span id="pause-mark">||</span> <span id="play-mark">▶</span><div id="notice-end-of-replay"></div><div id="notice-file-open-error"></div><div id="replay-viewer-at"></div><div id="time-current"></div><div id="time-duration"></div><div id="speech-bubble-template" style="display: none;"><div class="speech-bubble"></div></div></div></body></html>
