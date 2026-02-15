@@ -9,6 +9,7 @@ module.exports = {
     main: './src/resources/js/main_online.js',
     ko: './src/ko/ko.js',
     main_replay: './src/resources/js/replay/main_replay.js',
+    main_out: './src/resources/js/replay_download/main_out.js',
     main_update_history:
       './src/resources/js/update_history/main_update_history.js',
     dark_color_scheme:
@@ -114,6 +115,17 @@ module.exports = {
       template: 'src/ko/update-history/index.html',
       filename: 'ko/update-history/index.html',
       chunks: ['main_update_history', 'dark_color_scheme'],
+      chunksSortMode: 'manual',
+      minify: {
+        collapseWhitespace: true,
+        removeComments: true,
+      },
+    }),
+    new HtmlWebpackPlugin({
+      // 캡처해주신 파일 경로(src/ko/replay-download/index.html)를 기준으로 설정했습니다.
+      template: 'src/ko/replay-download/index.html', 
+      filename: 'ko/replay-download/index.html',
+      chunks: ['runtime', 'ko', 'main_out', 'dark_color_scheme'],
       chunksSortMode: 'manual',
       minify: {
         collapseWhitespace: true,
