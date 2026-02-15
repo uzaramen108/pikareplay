@@ -49,9 +49,17 @@
         text-align: center;
       }
       
-      /* Hide game canvas container */
+      /* Hide game canvas container visually but keep in DOM */
       #flex-container {
-        display: none;
+        position: fixed;
+        left: -10000px;
+        top: -10000px;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      
+      #game-canvas-container {
+        /* Keep elements in DOM for chat_display.js */
       }
       
       /* Loading box */
