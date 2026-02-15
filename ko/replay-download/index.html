@@ -1,159 +1,101 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>피카츄 배구 리플레이 → 동영상 변환기</title><link rel="icon" type="image/png" sizes="32x32" href="../../resources/assets/images/IDI_PIKAICON-0.png"><style>* {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>피카츄 배구 리플레이 → 동영상 변환기</title><meta name="author" content="이규태"><link rel="icon" type="image/png" sizes="32x32" href="../../resources/assets/images/IDI_PIKAICON-0.png"><style>/* Custom styles for download page */
       body {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        min-height: 100vh;
+        font-family: 'Segoe UI', sans-serif;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
         padding: 20px;
+        min-height: 100vh;
       }
       
       h1 {
-        font-size: 2.8rem;
-        margin-bottom: 15px;
-        text-align: center;
-        text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
-        animation: float 3s ease-in-out infinite;
+        font-size: 2.5rem;
+        margin: 20px 0;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
       }
       
-      @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-10px); }
-      }
-      
-      .subtitle {
-        font-size: 1.2rem;
-        color: #f0f0f0;
-        margin-bottom: 40px;
-        text-align: center;
-        opacity: 0.95;
-      }
-      
-      #download-btn {
-        padding: 18px 36px;
-        font-size: 19px;
-        font-weight: 700;
+      #record-btn {
+        padding: 15px 30px;
+        font-size: 18px;
+        font-weight: 600;
         cursor: pointer;
         background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         color: white;
         border: none;
-        border-radius: 12px;
-        box-shadow: 0 6px 25px rgba(245, 87, 108, 0.4);
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
         transition: all 0.3s ease;
-        margin-bottom: 30px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        margin-bottom: 20px;
       }
       
-      #download-btn:hover:not(:disabled) {
-        transform: translateY(-4px) scale(1.02);
-        box-shadow: 0 8px 30px rgba(245, 87, 108, 0.6);
+      #record-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
       }
       
-      #download-btn:active:not(:disabled) {
-        transform: translateY(-2px) scale(1.01);
-      }
-      
-      #download-btn:disabled {
-        opacity: 0.5;
+      #record-btn:disabled {
+        opacity: 0.6;
         cursor: not-allowed;
-        transform: none;
       }
       
       #status {
-        padding: 22px 35px;
-        background: rgba(255, 255, 255, 0.18);
-        border-radius: 12px;
-        color: #ffffff;
-        font-size: 17px;
+        padding: 15px 25px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        margin-bottom: 20px;
+        min-width: 400px;
         text-align: center;
-        backdrop-filter: blur(20px);
-        min-width: 450px;
-        margin-bottom: 35px;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-        border: 1px solid rgba(255,255,255,0.3);
       }
       
-      #loading-box {
+      /* Hide game canvas container */
+      #flex-container {
+        display: none;
+      }
+      
+      /* Loading box */
+      .fade-in-box.loading {
         position: fixed;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        background: rgba(0, 0, 0, 0.96);
-        padding: 60px 80px;
-        border-radius: 18px;
+        background: rgba(0, 0, 0, 0.95);
+        padding: 40px 60px;
+        border-radius: 12px;
         z-index: 1000;
-        text-align: center;
-        box-shadow: 0 15px 50px rgba(0,0,0,0.6);
-        border: 2px solid rgba(255,255,255,0.1);
-      }
-      
-      #loading-box.hidden {
-        display: none;
       }
       
       #progress-bar-border {
-        width: 500px;
-        height: 40px;
-        background: rgba(255, 255, 255, 0.15);
-        border-radius: 25px;
+        width: 400px;
+        height: 30px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 15px;
         overflow: hidden;
-        margin-top: 25px;
-        box-shadow: inset 0 3px 6px rgba(0,0,0,0.4);
+        margin-top: 15px;
       }
       
       #progress-bar {
         height: 100%;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
         transition: width 0.3s ease;
-        box-shadow: 0 0 15px rgba(102, 126, 234, 0.6);
-        animation: shimmer 2s infinite;
       }
       
-      @keyframes shimmer {
-        0% { background-position: -500px 0; }
-        100% { background-position: 500px 0; }
-      }
-      
-      #loading-box p {
-        font-size: 20px;
-        margin-bottom: 12px;
-        font-weight: 500;
-      }
-      
-      #game-canvas-container {
-        position: fixed;
-        left: -10000px;
-        top: -10000px;
-        visibility: hidden;
-        pointer-events: none;
+      .hidden {
+        display: none !important;
       }
       
       .info-box {
-        margin-top: 35px;
-        padding: 28px 35px;
-        background: rgba(255, 255, 255, 0.14);
-        border-radius: 14px;
-        backdrop-filter: blur(20px);
-        max-width: 680px;
-        box-shadow: 0 6px 25px rgba(0,0,0,0.25);
-        border: 1px solid rgba(255,255,255,0.25);
+        background: rgba(255, 255, 255, 0.12);
+        padding: 20px 30px;
+        border-radius: 10px;
+        max-width: 600px;
+        margin-top: 20px;
       }
       
       .info-box h2 {
-        font-size: 1.4rem;
-        margin-bottom: 18px;
         color: #ffd700;
-        text-align: center;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        margin-bottom: 10px;
       }
       
       .info-box ul {
@@ -162,11 +104,9 @@
       }
       
       .info-box li {
-        padding: 10px 0;
-        padding-left: 35px;
+        padding: 5px 0;
+        padding-left: 25px;
         position: relative;
-        font-size: 15.5px;
-        line-height: 1.6;
       }
       
       .info-box li:before {
@@ -175,19 +115,4 @@
         left: 0;
         color: #4ade80;
         font-weight: bold;
-        font-size: 20px;
-      }
-      
-      .warning {
-        margin-top: 22px;
-        padding: 18px;
-        background: rgba(255, 215, 0, 0.22);
-        border-left: 5px solid #ffd700;
-        border-radius: 6px;
-        font-size: 14.5px;
-        line-height: 1.7;
-      }
-      
-      .hidden {
-        display: none !important;
-      }</style><script defer="defer" src="../../runtime.1a3c387936a596b5bafa.js"></script><script defer="defer" src="../../ko.c88ad933754ea3dd3609.js"></script><script defer="defer" src="../../244.9e395e8539fe98ed7b14.js"></script><script defer="defer" src="../../476.5e9f3dd37b003d455bb1.js"></script><script defer="defer" src="../../main_out.312d03612d93c7cb2ff5.js"></script><script defer="defer" src="../../dark_color_scheme.86e03a713a5523a91fb5.js"></script><link href="../../415.42110e153a6ec48cd0df.css" rel="stylesheet"></head><body><h1>⚡ 피카츄 배구 리플레이 변환기 ⚡</h1><p class="subtitle">리플레이 파일(.txt)을 동영상(.webm)으로 빠르게 변환</p><button id="download-btn">📁 리플레이 파일 선택 & 변환 시작</button><div id="status">리플레이 파일을 선택하면 자동으로 변환이 시작됩니다...</div><div id="loading-box" class="hidden"><p>처리 중...</p><div id="progress-bar-border"><div id="progress-bar" style="width: 0%"></div></div></div><div id="game-canvas-container"></div><div class="info-box"><h2>📋 사용 방법 & 사양</h2><ul><li>위 버튼을 클릭하여 리플레이 .txt 파일을 선택하세요</li><li>자동으로 고속 프레임 캡처 및 인코딩이 진행됩니다</li><li>완료되면 .webm 동영상 파일이 자동으로 다운로드됩니다</li><li>동영상 해상도: 432×304 픽셀 (원본 화질)</li><li>재생 프레임레이트: 30 FPS</li><li><strong>닉네임, IP, 채팅이 동영상에 표시됩니다 (PIXI 렌더링)</strong></li><li>BGM 끄기, 효과음 켜기 (효과음은 동영상에 포함 안됨)</li><li>처리 속도: 10분 리플레이 → 약 1-2분</li></ul><div class="warning"><strong>⚠️ 중요:</strong> Chrome 94+ 또는 Edge 94+ 필수 (WebCodecs API)<br>Firefox, Safari는 지원되지 않습니다.<br><br><strong>✨ 새로운 기능:</strong> 채팅 말풍선이 동영상에 포함됩니다!</div></div></body></html>
+      }</style><script defer="defer" src="../../runtime.1a3c387936a596b5bafa.js"></script><script defer="defer" src="../../ko.c88ad933754ea3dd3609.js"></script><script defer="defer" src="../../244.9e395e8539fe98ed7b14.js"></script><script defer="defer" src="../../476.5e9f3dd37b003d455bb1.js"></script><script defer="defer" src="../../main_out.312d03612d93c7cb2ff5.js"></script><script defer="defer" src="../../dark_color_scheme.86e03a713a5523a91fb5.js"></script><link href="../../415.42110e153a6ec48cd0df.css" rel="stylesheet"></head><body><h1>⚡ 피카츄 배구 리플레이 → 동영상 변환기 ⚡</h1><button id="record-btn">📁 리플레이 파일 선택 & 변환 시작</button><div id="status">리플레이 파일을 선택하면 자동으로 변환이 시작됩니다...</div><div class="info-box"><h2>📋 사용 방법</h2><ul><li>위 버튼을 클릭하여 리플레이 .txt 파일을 선택하세요</li><li>자동으로 실시간 녹화가 시작됩니다</li><li>완료되면 .webm 동영상 파일이 다운로드됩니다</li><li>동영상 해상도: 432×304 픽셀</li><li>재생 프레임레이트: 30 FPS</li><li><strong>닉네임, IP, 채팅이 모두 표시됩니다</strong></li><li>BGM 꺼짐, 효과음만 (효과음은 캡처 안됨)</li></ul><p style="margin-top: 15px; color: #ffd700;">⚠️ 실시간 녹화 방식: 10분 리플레이 = 10분 소요</p></div><div id="flex-container"><div id="game-canvas-container"><div id="player1-chat-box" class="chat-box pre-wrap"></div><div id="player2-chat-box" class="chat-box pre-wrap"></div><div class="nicknames-container"><div class="nickname-and-partial-ip left"><span id="player1-nickname" class="nickname"></span> <span id="player1-partial-ip" class="partial-ip"></span></div><div class="nickname-and-partial-ip right"><span id="player2-nickname" class="nickname"></span> <span id="player2-partial-ip" class="partial-ip"></span></div></div><div class="fade-in-box loading black hidden" id="loading-box"><div><p>게임 스프라이트/사운드 로드 중...</p><div id="progress-bar-border"><div id="progress-bar" style="width: 0%"></div></div></div></div><div id="dropbox" class="fade-in-box hidden"></div><div class="fade-in-box notice hidden" id="notice-end-of-replay"><button type="button" id="notice-end-of-replay-ok-btn">알겠어요</button></div><div class="fade-in-box notice hidden" id="notice-file-open-error"><button type="button" id="notice-file-open-error-ok-btn">알겠어요</button></div><div id="player1-chat-disabled" class="hidden"></div><div id="player2-chat-disabled" class="hidden"></div></div><div id="keyboard-container" class="flex-for-keyboard hidden"><div class="grid-for-keyboard"><div id="z-key" class="keyboard-key">Z</div><div id="r-key" class="keyboard-key">R</div><div id="d-key" class="keyboard-key">D</div><div id="v-key" class="keyboard-key">V</div><div id="g-key" class="keyboard-key">G</div></div><div class="grid-for-keyboard"><div id="enter-key" class="keyboard-key">Enter</div><div id="up-key" class="keyboard-key">&uarr;</div><div id="left-key" class="keyboard-key">&larr;</div><div id="down-key" class="keyboard-key">&darr;</div><div id="right-key" class="keyboard-key">&rarr;</div></div></div><div class="hidden"><input id="scrubber-range-input" type="range" min="0" max="100" value="0"> <button type="button" id="play-pause-btn">▶</button> <span><span id="time-current">0:00</span> / <span id="time-duration">0:00</span></span> <button type="button" id="seek-backward-3">&lt;&lt; 3</button> <button type="button" id="seek-backward-1">&lt;&lt; 1</button> <button type="button" id="seek-forward-1">1 &gt;&gt;</button> <button type="button" id="seek-forward-3">3 &gt;&gt;</button> <button type="button" id="speed-btn-5-fps">5 fps</button> <button type="button" id="speed-btn-half-times">&times;0.5</button> <button type="button" id="speed-btn-1-times">&times;1</button> <button type="button" id="speed-btn-2-times">&times;2</button> <input id="fps-input" type="number"> <label><input id="show-keyboard-checkbox" type="checkbox"> 키보드</label> <label><input id="show-chat-checkbox" type="checkbox"> 채팅</label> <label><input id="show-nicknames-checkbox" type="checkbox"> 닉네임</label> <label><input id="show-ip-addresses-checkbox" type="checkbox"> IP</label> <label><input id="turn-on-bgm-checkbox" type="checkbox"> BGM</label> <label><input id="turn-on-sfx-checkbox" type="checkbox"> 효과음</label> <label><input id="graphic-sharp-checkbox" type="checkbox"> 그래픽</label> <input type="checkbox" id="dark-color-scheme-checkbox-1" class="dark-color-scheme-checkbox"></div><div id="play-mark" class="hidden">▶</div><div id="pause-mark" class="hidden">||</div><div id="replay-viewer-at" class="hidden">Replay Viewer</div></div></body></html>
