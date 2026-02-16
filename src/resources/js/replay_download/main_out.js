@@ -49,7 +49,7 @@ class OfflineConverter {
     CanvasRenderer.registerPlugin('prepare', CanvasPrepare);
     CanvasRenderer.registerPlugin('sprite', CanvasSpriteRenderer);
     Loader.registerPlugin(SpritesheetLoader);
-    settings.RESOLUTION = 2;
+    settings.RESOLUTION = 1;
     settings.SCALE_MODE = SCALE_MODES.NEAREST;
     settings.ROUND_PIXELS = true;
 
@@ -141,8 +141,21 @@ class OfflineConverter {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContext();
     
+    // ⭐ 키 매핑 테이블: ASSETS_PATH의 대문자 키 → audio.js의 camelCase 키
+    const keyMapping = {
+      'BGM': 'bgm',
+      'PIPIKACHU': 'pipikachu',
+      'PIKA': 'pika',
+      'CHU': 'chu',
+      'PI': 'pi',
+      'PIKACHU': 'pikachu',
+      'POWERHIT': 'powerHit',              // ⭐ camelCase!
+      'BALLTOUCHESGROUND': 'ballTouchesGround',  // ⭐ camelCase!
+    };
+    
     console.log('🔊 [AUDIO] Starting audio decoding...');
     console.log('🔊 [AUDIO] Sound files:', Object.keys(ASSETS_PATH.SOUNDS));
+    console.log('🔑 [AUDIO] Key mapping:', keyMapping);
     
     for (const key in ASSETS_PATH.SOUNDS) {
         const url = ASSETS_PATH.SOUNDS[key];
@@ -157,10 +170,10 @@ class OfflineConverter {
                 return audioCtx.decodeAudioData(buf);
             })
             .then(decoded => {
-                // ⭐ 중요: 소문자로 저장하여 fakeAudio.sounds 키와 일치시킴
-                const normalizedKey = key.toLowerCase();
-                this.decodedBuffers[normalizedKey] = decoded;
-                console.log(`✅ [AUDIO] Decoded: ${key} → stored as "${normalizedKey}", duration: ${decoded.duration.toFixed(2)}s, channels: ${decoded.numberOfChannels}`);
+                // ⭐ 매핑 테이블을 사용하여 올바른 키로 저장
+                const mappedKey = keyMapping[key] || key.toLowerCase();
+                this.decodedBuffers[mappedKey] = decoded;
+                console.log(`✅ [AUDIO] Decoded: ${key} → stored as "${mappedKey}", duration: ${decoded.duration.toFixed(2)}s, channels: ${decoded.numberOfChannels}`);
             })
             .catch(err => {
                 console.error(`❌ [AUDIO] Failed to decode ${key}:`, err);
@@ -485,18 +498,23 @@ class OfflineConverter {
     }, 1000);
   }
 
-  // [핵심] 중앙 대칭 UI
+  // [핵심] 더 보기 좋은 중앙 대칭 UI
   drawOverlaysOnCanvas() {
     const ctx = this.renderer.view.getContext('2d');
     if (!ctx) return;
 
     ctx.save();
     
-    // 중앙 기준 대칭 위치 (432 / 2 = 216 중심)
-    const centerX = 216;
-    const offsetX = 136;  // 중앙에서 136px 떨어진 위치
-    const leftX = centerX - offsetX;   // 80
-    const rightX = centerX + offsetX;  // 352
+    // ⭐ 개선된 위치: 화면을 4등분하여 1/4, 3/4 지점에 배치
+    // 432px / 4 = 108px 간격
+    const centerX = 216;        // 432 / 2
+    const quarterWidth = 60;   // 432 / 4
+    const leftX = centerX - quarterWidth;   // 108 (1/4 지점)
+    const rightX = centerX + quarterWidth;  // 324 (3/4 지점)
+    
+    // Y 위치
+    const nicknameY = 10;   // 닉네임 Y 위치
+    const ipY = 25;         // IP Y 위치 (닉네임 아래)
 
     const p1Nick = document.getElementById('player1-nickname')?.textContent || '';
     const p1IP = document.getElementById('player1-partial-ip')?.textContent || '';
@@ -505,43 +523,47 @@ class OfflineConverter {
 
     // Player 1 (Left) - 중앙 정렬
     if (p1Nick) {
-        ctx.font = 'bold 16px "Segoe UI", sans-serif';
-        ctx.textAlign = 'center';  // 중앙 정렬
+        // ⭐ 더 큰 폰트 (20px → 24px)
+        ctx.font = 'bold 12px "Segoe UI", Tahoma, sans-serif';
+        ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'black';
-        ctx.lineWidth = 3;
-        ctx.strokeText(p1Nick, leftX, 10);
-        ctx.fillText(p1Nick, leftX, 10);
+        ctx.lineWidth = 1;  // 3 → 4 (더 두꺼운 외곽선)
+        ctx.strokeText(p1Nick, leftX, nicknameY);
+        ctx.fillText(p1Nick, leftX, nicknameY);
         
         if (p1IP) {
-            ctx.font = '12px sans-serif';
-            ctx.strokeText(p1IP, leftX, 30);
-            ctx.fillText(p1IP, leftX, 30);
+            // ⭐ IP도 크기 증가 (14px → 16px)
+            ctx.font = '8px "Segoe UI", Tahoma, sans-serif';
+            ctx.lineWidth = 1;
+            ctx.strokeText(p1IP, leftX, ipY);
+            ctx.fillText(p1IP, leftX, ipY);
         }
     }
 
     // Player 2 (Right) - 중앙 정렬
     if (p2Nick) {
-        ctx.font = 'bold 16px "Segoe UI", sans-serif';
-        ctx.textAlign = 'center';  // 중앙 정렬
+        ctx.font = 'bold 12px "Segoe UI", Tahoma, sans-serif';
+        ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'black';
-        ctx.lineWidth = 3;
-        ctx.strokeText(p2Nick, rightX, 10);
-        ctx.fillText(p2Nick, rightX, 10);
+        ctx.lineWidth = 1;
+        ctx.strokeText(p2Nick, rightX, nicknameY);
+        ctx.fillText(p2Nick, rightX, nicknameY);
         
         if (p2IP) {
-            ctx.font = '12px sans-serif';
-            ctx.strokeText(p2IP, rightX, 30);
-            ctx.fillText(p2IP, rightX, 30);
+            ctx.font = '8px "Segoe UI", Tahoma, sans-serif';
+            ctx.lineWidth = 1;
+            ctx.strokeText(p2IP, rightX, ipY);
+            ctx.fillText(p2IP, rightX, ipY);
         }
     }
 
-    // 채팅 말풍선 (동일한 x 좌표 사용)
-    this.drawChatBubble(ctx, 'player1-chat-box', leftX, 60);
-    this.drawChatBubble(ctx, 'player2-chat-box', rightX, 60);
+    // 채팅 말풍선 (같은 X 좌표, 아래쪽에 배치)
+    this.drawChatBubble(ctx, 'player1-chat-box', leftX, 68);  // 65 → 68 (IP와 간격 확보)
+    this.drawChatBubble(ctx, 'player2-chat-box', rightX, 68);
     
     ctx.restore();
   }
@@ -551,23 +573,23 @@ class OfflineConverter {
       if (!el || !el.textContent || el.textContent.trim() === '') return;
       
       const text = el.textContent;
-      ctx.font = '14px sans-serif';
+      ctx.font = '16px sans-serif';  // 14px → 16px (더 크게)
       ctx.textAlign = 'center';
       
       const textMetrics = ctx.measureText(text);
-      const width = textMetrics.width + 20;
-      const height = 30;
+      const width = textMetrics.width + 24;  // 20 → 24 (더 넓은 패딩)
+      const height = 34;  // 30 → 34 (더 높이)
 
       // 말풍선 배경
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.fillRect(x - width / 2, y, width, height);
       ctx.strokeStyle = 'black';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 2;  // 1 → 2 (더 두꺼운 테두리)
       ctx.strokeRect(x - width / 2, y, width, height);
 
       // 텍스트
       ctx.fillStyle = 'black';
-      ctx.fillText(text, x, y + 10);
+      ctx.fillText(text, x, y + 11);  // 10 → 11 (중앙 정렬 조정)
   }
 }
 
