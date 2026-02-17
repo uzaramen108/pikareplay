@@ -1,11 +1,10 @@
 /**
  * Main script for converting Pikachu Volleyball replay files to video
  * OFFLINE RENDERING (High Speed)
- * - Audio: Reconstructs stereo sound by hooking fakeAudio
- * - UI: Burns HTML overlays (Nicknames, Chat) directly into Canvas
+ * - Resolution: Fixed 432x304
+ * - Audio: Reconstructs stereo sound (FakeAudio Hooking)
+ * - UI: Canvas rendering simulating CSS 'fade-inout' animation & speech bubble style
  * Uses 'mp4-muxer' library
- * 
- * FIXED VERSION: Audio debugging and symmetric positioning
  */
 'use strict';
 import { settings } from '@pixi/settings';
@@ -20,16 +19,16 @@ import { CanvasSpriteRenderer } from '@pixi/canvas-sprite';
 import { CanvasPrepare } from '@pixi/canvas-prepare';
 import '@pixi/canvas-display';
 import { ASSETS_PATH } from '../offline_version_js/assets_path.js';
-import { PikachuVolleyballReplay } from './pikavolley_replay.js';
+import { PikachuVolleyballReplay } from '../replay/pikavolley_replay.js';
 import { setGetSpeechBubbleNeeded } from '../chat_display.js';
 import { serialize } from '../utils/serialize.js';
 import { getHashCode } from '../utils/hash_code.js';
+import seedrandom from 'seedrandom';
 import '../../style.css';
 
-// npm install mp4-muxer 필요
 import * as Mp4Muxer from 'mp4-muxer';
 
-console.log('🎬 [INIT] Offline Renderer (FIXED - Audio Debug & Symmetric UI)');
+console.log('🎬 [INIT] Offline Renderer (CSS Animation Sync)');
 
 // [1] 전역 DOM 패치
 const originalReplaceChild = Node.prototype.replaceChild;
@@ -49,6 +48,7 @@ class OfflineConverter {
     CanvasRenderer.registerPlugin('prepare', CanvasPrepare);
     CanvasRenderer.registerPlugin('sprite', CanvasSpriteRenderer);
     Loader.registerPlugin(SpritesheetLoader);
+    
     settings.RESOLUTION = 1;
     settings.SCALE_MODE = SCALE_MODES.NEAREST;
     settings.ROUND_PIXELS = true;
@@ -58,14 +58,35 @@ class OfflineConverter {
     this.loader = null;
     this.pikaVolley = null;
     
-    // 오디오 기록용
-    this.audioLog = []; // { key: string, frame: number, pan: number }
+    this.audioLog = []; 
     this.decodedBuffers = {}; 
     this.totalDuration = 0;
     
+    // 채팅 상태 관리
+    this.chats = [];
+    this.chatHead = 0;
+    // { side, text, x, y, elapsed, duration }
+    this.activeBubbles = []; 
+    this.rng = null;
+
     this.muxer = null;
     this.videoEncoder = null;
     this.audioEncoder = null;
+    this.chatSizeSelect = null;
+    this.showNicknamesCheckbox = null;
+    this.showIPsCheckbox = null;
+    this.bgmCheckbox = null;
+    this.sfxCheckbox = null;
+    this.sharpGraphicsCheckbox = null;
+  }
+
+  updateUI() {
+    this.chatSizeSelect = document.getElementById('chat-size-select');
+    this.showNicknamesCheckbox = document.getElementById('show-nicknames-checkbox');
+    this.showIPsCheckbox = document.getElementById('show-ip-addresses-checkbox');
+    this.bgmCheckbox = document.getElementById('turn-on-bgm-checkbox');
+    this.sfxCheckbox = document.getElementById('turn-on-sfx-checkbox');
+    this.sharpGraphicsCheckbox = document.getElementById('graphic-sharp-checkbox');
   }
 
   updateStatus(message) {
@@ -79,7 +100,7 @@ class OfflineConverter {
     fileInput.type = 'file';
     fileInput.accept = '.txt';
     fileInput.onchange = (e) => {
-      //@ts-ignore
+      // @ts-ignore
       const file = e.target.files[0];
       if (file) this.loadReplayFile(file);
     };
@@ -91,21 +112,20 @@ class OfflineConverter {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        //@ts-ignore
+        // @ts-ignore
         const packWithComment = JSON.parse(event.target.result);
         const pack = packWithComment.pack;
         
-        // 해시 검증 (경고만)
         const originalHash = pack.hash;
         pack.hash = 0;
         if (originalHash !== getHashCode(serialize(pack))) {
-             console.warn('⚠️ [HASH] Hash mismatch - ignored');
+             console.warn('⚠️ Hash mismatch - ignored');
         }
         pack.hash = originalHash;
 
         this.initializeRenderer(pack);
       } catch (err) {
-        console.error('❌ [LOAD] Error:', err);
+        console.error('❌ Error:', err);
         this.updateStatus('파일 로딩 실패');
       }
     };
@@ -128,80 +148,56 @@ class OfflineConverter {
     this.loader = new Loader();
 
     const container = document.querySelector('#game-canvas-container');
+    // @ts-ignore
     container.innerHTML = '';
+    // @ts-ignore
     container.appendChild(this.renderer.view);
     
     this.ensureDOMElements(container); 
 
     this.loader.add(ASSETS_PATH.SPRITE_SHEET);
     
-    // [오디오 준비] Web Audio API용 버퍼 디코딩
     const soundLoadPromises = [];
     //@ts-ignore
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContext();
     
-    // ⭐ 키 매핑 테이블: ASSETS_PATH의 대문자 키 → audio.js의 camelCase 키
     const keyMapping = {
-      'BGM': 'bgm',
-      'PIPIKACHU': 'pipikachu',
-      'PIKA': 'pika',
-      'CHU': 'chu',
-      'PI': 'pi',
-      'PIKACHU': 'pikachu',
-      'POWERHIT': 'powerHit',              // ⭐ camelCase!
-      'BALLTOUCHESGROUND': 'ballTouchesGround',  // ⭐ camelCase!
+      'BGM': 'bgm', 'PIPIKACHU': 'pipikachu', 'PIKA': 'pika', 'CHU': 'chu',
+      'PI': 'pi', 'PIKACHU': 'pikachu', 'POWERHIT': 'powerHit', 'BALLTOUCHESGROUND': 'ballTouchesGround',
     };
-    
-    console.log('🔊 [AUDIO] Starting audio decoding...');
-    console.log('🔊 [AUDIO] Sound files:', Object.keys(ASSETS_PATH.SOUNDS));
-    console.log('🔑 [AUDIO] Key mapping:', keyMapping);
+
+    this.updateUI();
     
     for (const key in ASSETS_PATH.SOUNDS) {
         const url = ASSETS_PATH.SOUNDS[key];
-        console.log(`🔊 [AUDIO] Decoding: ${key} from ${url}`);
         const promise = fetch(url)
-            .then(res => {
-                console.log(`📥 [AUDIO] Fetched: ${key}, size: ${res.headers.get('content-length')}`);
-                return res.arrayBuffer();
-            })
-            .then(buf => {
-                console.log(`📦 [AUDIO] Buffer received: ${key}, size: ${buf.byteLength}`);
-                return audioCtx.decodeAudioData(buf);
-            })
+            .then(res => res.arrayBuffer())
+            .then(buf => audioCtx.decodeAudioData(buf))
             .then(decoded => {
-                // ⭐ 매핑 테이블을 사용하여 올바른 키로 저장
                 const mappedKey = keyMapping[key] || key.toLowerCase();
                 this.decodedBuffers[mappedKey] = decoded;
-                console.log(`✅ [AUDIO] Decoded: ${key} → stored as "${mappedKey}", duration: ${decoded.duration.toFixed(2)}s, channels: ${decoded.numberOfChannels}`);
-            })
-            .catch(err => {
-                console.error(`❌ [AUDIO] Failed to decode ${key}:`, err);
             });
         soundLoadPromises.push(promise);
         this.loader.add(ASSETS_PATH.SOUNDS[key]);
     }
 
     Promise.all(soundLoadPromises).then(() => {
-        console.log('✅ [AUDIO] All sounds decoded');
-        console.log('🔑 [AUDIO] Available buffer keys:', Object.keys(this.decodedBuffers));
         this.loader.load(() => this.startOfflineProcessing(pack));
     });
   }
 
   ensureDOMElements(container) {
-    const ids = [
-        'player1-chat-box', 'player2-chat-box', 
-        'player1-nickname', 'player2-nickname', 
-        'player1-partial-ip', 'player2-partial-ip',
-        'player1-chat-disabled', 'player2-chat-disabled'
-    ];
+    const ids = ['player1-nickname', 'player2-nickname', 'player1-partial-ip', 'player2-partial-ip'];
     ids.forEach(id => {
-        if (!document.getElementById(id)) {
-            const el = document.createElement('div');
+        let el = document.getElementById(id);
+        if (!el) {
+            el = document.createElement('div');
             el.id = id;
-            el.style.display = 'none';
+            el.style.display = 'none'; 
             container.appendChild(el);
+        } else {
+            el.textContent = '';
         }
     });
   }
@@ -220,16 +216,19 @@ class OfflineConverter {
       pack.chats
     );
 
+    // [RNG] 채팅 위치용 (chat_display.js와 동일한 시드 사용)
+    this.rng = seedrandom.alea(pack.roomID.slice(10));
+
+    this.chats = pack.chats || [];
+    this.chatHead = 0;
+    this.activeBubbles = [];
+
     try {
-        //@ts-ignore
+        // @ts-ignore
         setGetSpeechBubbleNeeded(this.pikaVolley); 
-    } catch(e){
-        console.warn('⚠️ [GAME] setGetSpeechBubbleNeeded failed:', e);
-    }
-    
+    } catch(e){}
     this.pikaVolley.willDisplayChat = true;
 
-    // [핵심] 오디오 후킹
     this.audioLog = [];
     this.mockAudioSystem();
 
@@ -237,9 +236,7 @@ class OfflineConverter {
     const totalFrames = pack.inputs.length;
     this.totalDuration = totalFrames / fps;
 
-    console.log(`📊 [RENDER] Total frames: ${totalFrames}, duration: ${this.totalDuration.toFixed(2)}s`);
-
-    // Muxer 설정
+    // @ts-ignore
     this.muxer = new Mp4Muxer.Muxer({
         target: new Mp4Muxer.ArrayBufferTarget(),
         video: { codec: 'avc', width: 432, height: 304 },
@@ -249,30 +246,22 @@ class OfflineConverter {
 
     this.videoEncoder = new VideoEncoder({
         output: (chunk, meta) => this.muxer.addVideoChunk(chunk, meta),
-        error: (e) => console.error('❌ [VIDEO] Encoder error:', e)
+        error: (e) => console.error('Video Error:', e)
     });
     this.videoEncoder.configure({
-        codec: 'avc1.42001f',
-        width: 432,
-        height: 304,
-        bitrate: 2_500_000,
-        framerate: fps,
+        codec: 'avc1.42001f', width: 432, height: 304, bitrate: 2_500_000, framerate: fps,
     });
 
     this.audioEncoder = new AudioEncoder({
         output: (chunk, meta) => this.muxer.addAudioChunk(chunk, meta),
-        error: (e) => console.error('❌ [AUDIO] Encoder error:', e)
+        error: (e) => console.error('Audio Error:', e)
     });
     this.audioEncoder.configure({
-        codec: 'mp4a.40.2',
-        sampleRate: 44100,
-        numberOfChannels: 2,
-        bitrate: 128_000,
+        codec: 'mp4a.40.2', sampleRate: 44100, numberOfChannels: 2, bitrate: 128_000,
     });
 
     const progressBar = document.getElementById('progress-bar');
     
-    // [STEP 1] 비디오 렌더링
     for (let i = 0; i < totalFrames; i++) {
         if (this.videoEncoder.encodeQueueSize > 20) {
             await new Promise(r => setTimeout(r, 10));
@@ -280,13 +269,14 @@ class OfflineConverter {
 
         try {
             this.pikaVolley.gameLoopSilent(); 
-        } catch(e) {
-            if (i % 1000 === 0) console.warn(`⚠️ [RENDER] Frame ${i} error:`, e);
-        }
+        } catch(e) {}
+
+        this.processChatFrame(i); // 채팅 상태 업데이트
 
         this.renderer.render(this.stage);
         this.drawOverlaysOnCanvas();
 
+        // @ts-ignore
         const bitmap = await createImageBitmap(this.renderer.view);
         const videoFrame = new VideoFrame(bitmap, { timestamp: (i * 1000000) / fps });
         
@@ -297,178 +287,165 @@ class OfflineConverter {
         if (i % 30 === 0) {
             const percent = Math.floor((i / totalFrames) * 100);
             this.updateStatus(`영상 처리 중... ${percent}%`);
+            // @ts-ignore
             if(progressBar) progressBar.style.width = `${percent}%`;
             await new Promise(r => setTimeout(r, 0));
         }
     }
 
     await this.videoEncoder.flush();
-    console.log('✅ [VIDEO] All frames encoded');
-    
-    // [STEP 2] 오디오 재조립
-    console.log(`🔊 [AUDIO] Audio log entries: ${this.audioLog.length}`);
-    if (this.audioLog.length > 0) {
-        console.log('🔊 [AUDIO] Sample events:', this.audioLog.slice(0, 5));
-    }
     
     this.updateStatus('오디오 합성 중...');
     await this.synthesizeAndEncodeAudio(fps);
 
-    // [STEP 3] 저장
     this.muxer.finalize();
     const buffer = this.muxer.target.buffer;
     this.saveFile(buffer);
   }
 
+  // [핵심] CSS @keyframes fade-inout 시뮬레이션
+  // 0%~25%: Fade In | 25%~75%: Visible | 75%~100%: Fade Out
+  // Duration: 5초 (30FPS 기준 150프레임)
+  processChatFrame(currentFrame) {
+      // 1. 새 채팅 확인
+      while (this.chatHead < this.chats.length && this.chats[this.chatHead][0] === currentFrame) {
+          const chat = this.chats[this.chatHead];
+          const side = chat[1]; 
+          const message = chat[2];
+          
+          // 위치 계산 (chat_display.js 로직 흉내)
+          const rand1 = this.rng();
+          const rand2 = this.rng();
+          const canvasW = 432;
+          const canvasH = 304;
+          
+          // Y 좌표: top 20% + 30% * rng
+          const y = canvasH * (0.20 + 0.30 * rand1);
+          let x;
+
+          if (side === 1) {
+              // P1: right 55% + 25% * rng -> left 좌표로 변환
+              // right%가 55~80% 이면 left%는 20~45%
+              const rightPct = 0.55 + 0.25 * rand2;
+              x = canvasW * (1 - rightPct); 
+          } else {
+              // P2: left 55% + 25% * rng
+              const leftPct = 0.55 + 0.25 * rand2;
+              x = canvasW * leftPct;
+          }
+
+          // 기존 말풍선 중 같은 편인 것 제거
+          this.activeBubbles = this.activeBubbles.filter(b => b.side !== side);
+
+          this.activeBubbles.push({
+              side: side,
+              text: message,
+              x: x,
+              y: y,
+              elapsed: 0,
+              duration: 150 // 5초 * 30fps
+          });
+
+          this.chatHead++;
+      }
+
+      // 2. 애니메이션 프레임 진행
+      for (let i = this.activeBubbles.length - 1; i >= 0; i--) {
+          const b = this.activeBubbles[i];
+          b.elapsed++;
+
+          // CSS fade-inout 시뮬레이션
+          // 0~25%: Fade In
+          // 25~75%: Visible
+          // 75~100%: Fade Out
+          const progress = b.elapsed / b.duration;
+          
+          if (progress < 0.25) {
+              // 0 -> 1
+              b.alpha = progress / 0.25;
+          } else if (progress < 0.75) {
+              // 1 유지
+              b.alpha = 1.0;
+          } else {
+              // 1 -> 0
+              b.alpha = 1.0 - ((progress - 0.75) / 0.25);
+          }
+
+          if (b.elapsed >= b.duration) {
+              this.activeBubbles.splice(i, 1);
+          }
+      }
+  }
+
   mockAudioSystem() {
-    console.log('🔊 [AUDIO-HOOK] Starting mockAudioSystem...');
-    this.pikaVolley.audio.turnBGMVolume(false);
-    this.pikaVolley.audio.turnSFXVolume(true);
+    //@ts-ignore
+    this.pikaVolley.audio.turnBGMVolume(this.bgmCheckbox.checked);
+    //@ts-ignore
+    this.pikaVolley.audio.turnSFXVolume(this.sfxCheckbox.checked);
 
     const fakeSounds = this.pikaVolley.fakeAudio.sounds;
-    console.log('🔊 [AUDIO-HOOK] fakeAudio.sounds keys:', Object.keys(fakeSounds));
-    
-    // 각 사운드 키를 새로운 객체로 교체
     for (const key in fakeSounds) {
-        if (key === 'bgm') {
-            console.log('🔇 [AUDIO-HOOK] Skipping BGM');
-            continue;
-        }
-        
-        console.log(`🔊 [AUDIO-HOOK] Hooking sound: "${key}"`);
-        
-        // 새 객체 할당 (중요: 참조 끊기)
+        if (key === 'bgm') continue;
         fakeSounds[key] = {
             play: (pan = 0) => {
                 const currentFrame = this.pikaVolley.replayFrameCounter;
-                console.log(`🎵 [AUDIO-EVENT] Sound: "${key}", Frame: ${currentFrame}, Pan: ${pan}`);
-                this.audioLog.push({
-                    key: key,
-                    frame: currentFrame,
-                    pan: pan
-                });
+                this.audioLog.push({ key, frame: currentFrame, pan });
             },
             stop: () => {}
         };
     }
-    console.log('✅ [AUDIO-HOOK] mockAudioSystem complete');
   }
 
   async synthesizeAndEncodeAudio(fps) {
-    if (this.audioLog.length === 0) {
-        console.warn('⚠️ [AUDIO] No audio events recorded - skipping audio synthesis');
-        return;
-    }
-
-    console.log(`🔊 [AUDIO-SYNTH] Starting synthesis with ${this.audioLog.length} events`);
+    if (this.audioLog.length === 0) return;
 
     const sampleRate = 44100;
     const length = Math.ceil(this.totalDuration * sampleRate) + sampleRate; 
-    
-    console.log(`🔊 [AUDIO-SYNTH] Creating OfflineAudioContext: ${length} samples, ${this.totalDuration.toFixed(2)}s`);
     const offlineCtx = new OfflineAudioContext(2, length, sampleRate);
 
-    let eventCount = 0;
-    let skippedCount = 0;
-    this.audioLog.forEach((log, index) => {
+    this.audioLog.forEach(log => {
         const buffer = this.decodedBuffers[log.key];
-        if (!buffer) {
-            skippedCount++;
-            if (index < 5) {
-                console.warn(`⚠️ [AUDIO-SYNTH] No buffer for key: "${log.key}"`);
-                console.warn(`   Available keys: ${Object.keys(this.decodedBuffers).join(', ')}`);
-            }
-            return;
-        }
-
-        const source = offlineCtx.createBufferSource();
-        source.buffer = buffer;
-
-        // 스테레오 패닝
-        const panner = offlineCtx.createStereoPanner();
-        panner.pan.value = (log.pan || 0) * 0.75;
-
-        source.connect(panner);
-        panner.connect(offlineCtx.destination);
-        
-        const startTime = log.frame / fps;
-        source.start(startTime);
-        
-        eventCount++;
-        if (index < 5 || index % 100 === 0) {
-            console.log(`🎵 [AUDIO-SYNTH] Event ${index}: ${log.key} at ${startTime.toFixed(2)}s, pan: ${panner.pan.value.toFixed(2)}`);
+        if (buffer) {
+            const source = offlineCtx.createBufferSource();
+            source.buffer = buffer;
+            const panner = offlineCtx.createStereoPanner();
+            panner.pan.value = (log.pan || 0) * 0.75;
+            source.connect(panner);
+            panner.connect(offlineCtx.destination);
+            source.start(log.frame / fps);
         }
     });
 
-    console.log(`✅ [AUDIO-SYNTH] Placed ${eventCount} audio events (skipped ${skippedCount} due to missing buffers)`);
-    console.log('🔊 [AUDIO-SYNTH] Starting offline rendering...');
-    
     const renderedBuffer = await offlineCtx.startRendering();
-    
-    console.log(`✅ [AUDIO-SYNTH] Rendered: ${renderedBuffer.length} samples, ${renderedBuffer.duration.toFixed(2)}s`);
-    
-    // 샘플 확인 (디버깅)
-    const leftChannel = renderedBuffer.getChannelData(0);
-    const rightChannel = renderedBuffer.getChannelData(1);
-    let maxLeft = 0, maxRight = 0;
-    for (let i = 0; i < Math.min(1000, leftChannel.length); i++) {
-        maxLeft = Math.max(maxLeft, Math.abs(leftChannel[i]));
-        maxRight = Math.max(maxRight, Math.abs(rightChannel[i]));
-    }
-    console.log(`🔊 [AUDIO-SYNTH] Sample check - Left peak: ${maxLeft.toFixed(4)}, Right peak: ${maxRight.toFixed(4)}`);
+    this.downloadWav(renderedBuffer);
 
-    // AudioEncoder에 주입
-    console.log('🔊 [AUDIO-ENCODE] Starting audio encoding...');
-    const chunkSize = 4096;  // 작은 청크로 변경 (더 안정적)
+    const chunkSize = 4096; 
     const lengthSamples = renderedBuffer.length;
     const numberOfChannels = renderedBuffer.numberOfChannels;
 
-    let encodedChunks = 0;
     for (let frame = 0; frame < lengthSamples; frame += chunkSize) {
         const size = Math.min(chunkSize, lengthSamples - frame);
-        
-        // Planar 형식: [L0, L1, ..., Ln, R0, R1, ..., Rn]
         const planarData = new Float32Array(size * numberOfChannels);
-        
         for (let ch = 0; ch < numberOfChannels; ch++) {
             const channelData = renderedBuffer.getChannelData(ch);
-            const offset = ch * size;
-            for (let i = 0; i < size; i++) {
-                planarData[offset + i] = channelData[frame + i];
-            }
+            planarData.set(channelData.subarray(frame, frame + size), ch * size);
         }
-
         const audioData = new AudioData({
-            format: 'f32-planar',
-            sampleRate: sampleRate,
-            numberOfChannels: numberOfChannels,
-            numberOfFrames: size,
-            timestamp: (frame / sampleRate) * 1_000_000,
-            data: planarData.buffer,  // ArrayBuffer 전달
+            format: 'f32-planar', sampleRate, numberOfChannels, numberOfFrames: size,
+            timestamp: (frame / sampleRate) * 1_000_000, data: planarData
         });
-
         this.audioEncoder.encode(audioData);
         audioData.close();
-        
-        encodedChunks++;
-        if (encodedChunks % 100 === 0) {
-            console.log(`🔊 [AUDIO-ENCODE] Encoded ${encodedChunks} chunks`);
-        }
     }
-
     await this.audioEncoder.flush();
-    console.log(`✅ [AUDIO-ENCODE] Complete - ${encodedChunks} chunks encoded`);
   }
 
   saveFile(buffer) {
     const blob = new Blob([buffer], { type: 'video/mp4' });
     const url = URL.createObjectURL(blob);
-    
-    console.log(`💾 [SAVE] File size: ${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB`);
-    
     const d = new Date();
-    const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-    const timeStr = `${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
+    const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    const timeStr = `${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
     let filename = `${dateStr}_${timeStr}_pikavolley_replay.mp4`;
     
     if (this.pikaVolley.nicknames && this.pikaVolley.nicknames.length === 2) {
@@ -484,9 +461,10 @@ class OfflineConverter {
     
     this.updateStatus('완료!');
     const recordBtn = document.getElementById('record-btn');
-    //@ts-ignore
+    // @ts-ignore
     if (recordBtn) recordBtn.disabled = false;
     const loadingOverlay = document.getElementById('loading-overlay');
+    // @ts-ignore
     if (loadingOverlay) loadingOverlay.classList.add('hidden');
     
     setTimeout(() => {
@@ -498,98 +476,174 @@ class OfflineConverter {
     }, 1000);
   }
 
-  // [핵심] 더 보기 좋은 중앙 대칭 UI
   drawOverlaysOnCanvas() {
+    // @ts-ignore
     const ctx = this.renderer.view.getContext('2d');
     if (!ctx) return;
 
     ctx.save();
     
-    // ⭐ 개선된 위치: 화면을 4등분하여 1/4, 3/4 지점에 배치
-    // 432px / 4 = 108px 간격
-    const centerX = 216;        // 432 / 2
-    const quarterWidth = 60;   // 432 / 4
-    const leftX = centerX - quarterWidth;   // 108 (1/4 지점)
-    const rightX = centerX + quarterWidth;  // 324 (3/4 지점)
-    
-    // Y 위치
-    const nicknameY = 10;   // 닉네임 Y 위치
-    const ipY = 25;         // IP Y 위치 (닉네임 아래)
-
-    const p1Nick = document.getElementById('player1-nickname')?.textContent || '';
-    const p1IP = document.getElementById('player1-partial-ip')?.textContent || '';
-    const p2Nick = document.getElementById('player2-nickname')?.textContent || '';
-    const p2IP = document.getElementById('player2-partial-ip')?.textContent || '';
-
-    // Player 1 (Left) - 중앙 정렬
-    if (p1Nick) {
-        // ⭐ 더 큰 폰트 (20px → 24px)
-        ctx.font = 'bold 12px "Segoe UI", Tahoma, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillStyle = 'white';
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 1;  // 3 → 4 (더 두꺼운 외곽선)
-        ctx.strokeText(p1Nick, leftX, nicknameY);
-        ctx.fillText(p1Nick, leftX, nicknameY);
-        
-        if (p1IP) {
-            // ⭐ IP도 크기 증가 (14px → 16px)
-            ctx.font = '8px "Segoe UI", Tahoma, sans-serif';
-            ctx.lineWidth = 1;
-            ctx.strokeText(p1IP, leftX, ipY);
-            ctx.fillText(p1IP, leftX, ipY);
-        }
+    const center = 216;
+    const distance = 50;
+    const nicknameY = 10;
+    const ipY = 25;
+    let p1Nickset = '';
+    let p2Nickset = '';
+    let p1IPset = '';
+    let p2IPset = '';
+    //@ts-ignore
+    if (this.showNicknamesCheckbox.checked) {
+        p1Nickset = document.getElementById('player1-nickname')?.textContent || '';
+        p2Nickset = document.getElementById('player2-nickname')?.textContent || '';
+    }
+    //@ts-ignore
+    if (this.showIPsCheckbox.checked) {
+        p1IPset = document.getElementById('player1-partial-ip')?.textContent || '';
+        p2IPset = document.getElementById('player2-partial-ip')?.textContent || '';
     }
 
-    // Player 2 (Right) - 중앙 정렬
-    if (p2Nick) {
-        ctx.font = 'bold 12px "Segoe UI", Tahoma, sans-serif';
+    const p1Nick = p1Nickset;
+    const p2Nick = p2Nickset;
+    const p1IP = p1IPset;
+    const p2IP = p2IPset;
+
+    // Player 1
+    if (p1Nick) {
+        ctx.font = 'bold 12px "Segoe UI", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 1;
-        ctx.strokeText(p2Nick, rightX, nicknameY);
-        ctx.fillText(p2Nick, rightX, nicknameY);
-        
-        if (p2IP) {
-            ctx.font = '8px "Segoe UI", Tahoma, sans-serif';
+        ctx.strokeText(p1Nick, center - distance, nicknameY);
+        ctx.fillText(p1Nick, center - distance, nicknameY);
+        if (p1IP) {
+            ctx.font = '8px sans-serif';
             ctx.lineWidth = 1;
-            ctx.strokeText(p2IP, rightX, ipY);
-            ctx.fillText(p2IP, rightX, ipY);
+            ctx.strokeText(p1IP, center - distance, ipY);
+            ctx.fillText(p1IP, center - distance, ipY);
         }
     }
 
-    // 채팅 말풍선 (같은 X 좌표, 아래쪽에 배치)
-    this.drawChatBubble(ctx, 'player1-chat-box', leftX, 68);  // 65 → 68 (IP와 간격 확보)
-    this.drawChatBubble(ctx, 'player2-chat-box', rightX, 68);
+    // Player 2
+    if (p2Nick) {
+        ctx.font = 'bold 12px "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = 'white';
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 1;
+        ctx.strokeText(p2Nick, center + distance, nicknameY);
+        ctx.fillText(p2Nick, center + distance, nicknameY);
+        if (p2IP) {
+            ctx.font = '8px sans-serif';
+            ctx.lineWidth = 1;
+            ctx.strokeText(p2IP, center + distance, ipY);
+            ctx.fillText(p2IP, center + distance, ipY);
+        }
+    }
+
+    // 말풍선 그리기 (페이드아웃 알파 적용)
+    this.activeBubbles.forEach(b => {
+        this.drawSpeechBubble(ctx, b.text, b.x, b.y, b.alpha);
+    });
     
     ctx.restore();
   }
 
-  drawChatBubble(ctx, elementId, x, y) {
-      const el = document.getElementById(elementId);
-      if (!el || !el.textContent || el.textContent.trim() === '') return;
+  // [핵심] CSS 스타일 흉내 (흰색 배경, 둥근 모서리, 패딩)
+  drawSpeechBubble(ctx, text, x, y, alpha) {
+      if (!text) return;
       
-      const text = el.textContent;
-      ctx.font = '16px sans-serif';  // 14px → 16px (더 크게)
+      ctx.save();
+      ctx.globalAlpha = alpha; // 계산된 투명도 적용
+      //@ts-ignore
+      if (this.chatSizeSelect.value === 'large') {
+        ctx.font = '18px "Segoe UI", sans-serif';
+        //@ts-ignore
+      } else if (this.chatSizeSelect.value === 'small') {
+        ctx.font = '12px "Segoe UI", sans-serif';
+      } else {
+        return;
+      }
+      ctx.font = '12px sans-serif'; // CSS: font-size: calc(1.5 * var(--font-size)) approx 24px but scaled down here
       ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       
       const textMetrics = ctx.measureText(text);
-      const width = textMetrics.width + 24;  // 20 → 24 (더 넓은 패딩)
-      const height = 34;  // 30 → 34 (더 높이)
+      const padding = 6; // CSS: padding: 10px
+      const width = textMetrics.width + (padding * 2);
+      const height = 24 + padding; // 대략적인 높이
+      const r = 10; // CSS: border-radius: 10px
 
-      // 말풍선 배경
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.fillRect(x - width / 2, y, width, height);
-      ctx.strokeStyle = 'black';
-      ctx.lineWidth = 2;  // 1 → 2 (더 두꺼운 테두리)
-      ctx.strokeRect(x - width / 2, y, width, height);
+      // 말풍선 위치 조정 (Top, Left/Right 기준 보정)
+      const bubbleX = x - width / 2;
+      const bubbleY = y;
 
-      // 텍스트
+      // 둥근 사각형 그리기
+      ctx.beginPath();
+      ctx.moveTo(bubbleX + r, bubbleY);
+      ctx.lineTo(bubbleX + width - r, bubbleY);
+      ctx.quadraticCurveTo(bubbleX + width, bubbleY, bubbleX + width, bubbleY + r);
+      ctx.lineTo(bubbleX + width, bubbleY + height - r);
+      ctx.quadraticCurveTo(bubbleX + width, bubbleY + height, bubbleX + width - r, bubbleY + height);
+      ctx.lineTo(bubbleX + r, bubbleY + height);
+      ctx.quadraticCurveTo(bubbleX, bubbleY + height, bubbleX, bubbleY + height - r);
+      ctx.lineTo(bubbleX, bubbleY + r);
+      ctx.quadraticCurveTo(bubbleX, bubbleY, bubbleX + r, bubbleY);
+      ctx.closePath();
+
+      // CSS: background-color: rgba(255, 255, 255, 0.95)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fill();
+
+      // 텍스트 그리기 (CSS: color: black)
       ctx.fillStyle = 'black';
-      ctx.fillText(text, x, y + 11);  // 10 → 11 (중앙 정렬 조정)
+      ctx.fillText(text, x, bubbleY + height / 2);
+
+      ctx.restore();
+  }
+
+  downloadWav(audioBuffer) {
+    const buffer = this.bufferToWave(audioBuffer, audioBuffer.length);
+    const blob = new Blob([buffer], { type: 'audio/wav' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pikavolley_audio.wav`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+  }
+
+  bufferToWave(abuffer, len) {
+    const numOfChan = abuffer.numberOfChannels;
+    const length = len * numOfChan * 2 + 44;
+    const buffer = new ArrayBuffer(length);
+    const view = new DataView(buffer);
+    const channels = [];
+    let i, sample, offset = 0, pos = 0;
+
+    setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157); 
+    setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan);
+    setUint32(abuffer.sampleRate); setUint32(abuffer.sampleRate * 2 * numOfChan); 
+    setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164); setUint32(length - pos - 4); 
+
+    for (i = 0; i < abuffer.numberOfChannels; i++) channels.push(abuffer.getChannelData(i));
+
+    while (pos < len) {
+      for (i = 0; i < numOfChan; i++) {
+        sample = Math.max(-1, Math.min(1, channels[i][pos])); 
+        sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0; 
+        view.setInt16(44 + offset, sample, true);
+        offset += 2;
+      }
+      pos++;
+    }
+    function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+    function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+    return buffer;
   }
 }
 
@@ -608,5 +662,3 @@ const recordBtn = document.getElementById('record-btn');
 if (recordBtn) {
   recordBtn.addEventListener('click', () => converter.handleRecordButtonClick());
 }
-
-console.log('✅ [INIT] Offline converter ready');
